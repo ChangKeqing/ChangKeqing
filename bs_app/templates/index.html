@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>可靠性建模仿真平台</title>
+</head>
+<body>
+    <h1>可靠性建模仿真平台</h1>
+    <h2>Markov模型计算</h2>
+    <form action="/markov" method="get">
+        <p>请输入3x3状态转移矩阵，每行用逗号分隔:</p>
+        <textarea name="matrix" rows="3" cols="30">0.98,0.02,0
+0,0,1
+0.95,0,0.05</textarea>
+        <br>
+        <button type="submit">计算</button>
+    </form>
+    <h2>蒙特卡罗仿真</h2>
+    <form action="/montecarlo" method="get">
+        <p>仿真次数: <input type="number" name="trials" value="1000"></p>
+        <p>仿真时间步长: <input type="number" name="steps" value="100"></p>
+        <button type="submit">开始仿真</button>
+    </form>
+</body>
+</html>
