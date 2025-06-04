@@ -23,3 +23,15 @@ cd AndroidCalendarApp
 ```
 
 The resulting APK can be found under `app/build/outputs/apk/debug/`.
+
+## Data Visualization Dashboard
+
+The `DataVizDashboard` directory contains a small Flask-based web application that connects to a MySQL database and displays data using Chart.js. It serves as a simple example of a browser/server (B/S) big-screen visualization tool.
+
+```bash
+cd DataVizDashboard
+pip install -r requirements.txt
+python app.py
+```
+
+Configure the required MySQL environment variables as described in `DataVizDashboard/README.md` before launching the server.
