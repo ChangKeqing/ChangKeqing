@@ -1,6 +1,6 @@
 # A股量化模拟盘 (Claude 决策)
 
-每个交易日收盘后在 GitHub Actions 上运行一次: 拉行情 → 计算量化信号 → 调用 Claude 决定目标仓位 → 模拟盘在下一交易日开盘撮合。虚拟资金, 初始 10,000 美元 (首次运行时按当日汇率折成人民币)。
+每个交易日收盘后在你的 Mac 上自动运行一次: 拉行情 → 计算量化信号 → 调用 Claude 决定目标仓位 → 模拟盘在下一交易日开盘撮合。虚拟资金, 初始 10,000 美元 (首次运行时按当日汇率折成人民币)。
 
 ## 策略
 
@@ -23,31 +23,56 @@ Claude 每天收到账户状态、全部信号和规则基线, 输出最终目�
 
 ## 额度用完即停
 
-- Claude API 返回余额不足 / 消费上限类错误 (402 `billing_error`、"credit balance is too low" 等) 时, 写入 `state/HALTED`, 取消未成交委托, 工作流自动禁用定时任务。持仓保留不动, 之后不再运行。
-- 可选: 设置仓库变量 `LLM_BUDGET_USD`, 按 token 用量估算的累计花费达到该值时同样停止。
+- Claude API 返回余额不足 / 消费上限类错误 (402 `billing_error`、"credit balance is too low" 等) 时, 写入 `state/HALTED`, 取消未成交委托, 并自动卸载 Mac 上的定时任务。持仓保留不动, 之后不再运行。
+- 可选: 在 `.env` 里加一行 `LLM_BUDGET_USD=5`, 按 token 用量估算的累计花费达到该值时同样停止。
 - 限流、过载、网络错误不算额度用完: 当天改用规则基线, 第二天继续。
-- API key 无效时任务直接失败, 不交易。
+- API key 无效时直接报错退出, 不交易。
 
-## 部署
+## 在 Mac 上安装
 
-1. 在仓库 Settings → Secrets and variables → Actions 添加 secret `ANTHROPIC_API_KEY`。
-2. 工作流 `.github/workflows/ashare-quant.yml` 需要在默认分支上, 定时任务才会触发 (工作日北京时间 15:40)。也可以在 Actions 页面手动 Run workflow。
-3. 可选仓库变量: `CLAUDE_MODEL` (默认 `claude-opus-5-5`)、`LLM_BUDGET_USD`。
-
-每次运行会把 `state/state.json`、`state/equity.csv` 和 `report.md` (当日日报) 提交回仓库。
-
-按默认模型估算, 每次调用约 4-6k 输入 token 加几千输出 token, 单日成本在几美分到一两毛美元之间。
-
-## 本地运行
+需要 Python 3.10+ (没有的话先 `brew install python`)。
 
 ```bash
-pip install -r ashare_quant/requirements.txt
-python -m ashare_quant.backtest          # 规则基线回测 (不调用 Claude)
-python -m ashare_quant.run --no-llm      # 只用规则基线跑一天
-ANTHROPIC_API_KEY=... python -m ashare_quant.run
+git clone https://github.com/ChangKeqing/ChangKeqing.git
+cd ChangKeqing
+bash ashare_quant/mac/install.sh
 ```
 
+安装脚本会:
+
+1. 在 `ashare_quant/.venv` 建虚拟环境并安装依赖;
+2. 让你粘贴 Anthropic API key, 存到 `ashare_quant/.env` (权限 600, 已在 .gitignore 中, 不会被提交);
+3. 用 launchd 安装定时任务, 每天北京时间 15:40 (自动换算成本机时区) 运行; 非交易日会自动跳过;
+4. 立刻运行一次。
+
+| 文件 | 内容 |
+|---|---|
+| `ashare_quant/report.md` | 当日日报 |
+| `ashare_quant/state/` | 账户状态 `state.json`、净值曲线 `equity.csv` |
+| `ashare_quant/logs/run.log` | 每次运行的日志 |
+
+常用命令:
+
+```bash
+bash ashare_quant/mac/run_daily.sh        # 手动跑一次
+tail -n 30 ashare_quant/logs/run.log      # 看日志
+bash ashare_quant/mac/uninstall.sh        # 停止定时任务 (保留账户数据)
+```
+
+关于 Mac 休眠和关机:
+
+- 到点时 Mac 在休眠, launchd 会在唤醒后补跑。
+- 到点时 Mac 关机, 当天不会运行。下次运行时, 之前挂的委托按委托日之后第一个交易日的开盘价成交, 不会漏单; 但中间没跑的那几天不会生成新委托。想每天都跑, 可以在 系统设置 → 电池/节能 里设置定时开机或防止自动休眠。
+
+默认模型 `claude-opus-5-5`, 可在 `.env` 里加 `CLAUDE_MODEL=...` 修改。按 token 估算, 单日成本在几美分到一两毛美元之间。
+
+## 数据源
+
+腾讯行情接口 (前复权日线), 请求失败时自动改用东方财富接口。
+
 ## 回测 (规则基线, 不含 Claude)
+
+`ashare_quant/.venv/bin/python -m ashare_quant.backtest` 可重跑。
 
 2024-07-01 ~ 2026-11-20, 前复权日线, 含全部费用:
 

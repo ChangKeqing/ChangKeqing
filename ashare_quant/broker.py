@@ -35,6 +35,7 @@ def fill_pending(state: dict, bars: dict[str, dict], date: str) -> list[dict]:
     state["pending"] = []
     for o in orders:
         s, side, bar = o["symbol"], o["side"], bars.get(o["symbol"])
+        date = bar.get("date", date) if bar else date
         if bar is None or bar["volume"] <= 0:
             fills.append({**o, "date": date, "status": "skipped: 停牌/无行情"})
             continue

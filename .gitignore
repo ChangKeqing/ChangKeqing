@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+ashare_quant/.env
+ashare_quant/.venv/
+ashare_quant/logs/
+ashare_quant/state/
+ashare_quant/report.md

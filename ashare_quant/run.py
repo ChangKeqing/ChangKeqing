@@ -71,7 +71,7 @@ def main() -> int:
         print(f"[halt] bot stopped on {state['halted']['date']}: {state['halted']['reason']}")
         return 0
     if not args.no_llm and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
-        print("ANTHROPIC_API_KEY is not set. Add it as a repository secret (or pass --no-llm to test).")
+        print("ANTHROPIC_API_KEY is not set. Put it in ashare_quant/.env (or pass --no-llm to test).")
         return 2
 
     fx = data.fetch_usdcny()
@@ -91,11 +91,13 @@ def main() -> int:
         return 0
 
     # 1) yesterday's orders fill at today's open
+    # (the first session after the order date, so a missed day, e.g. the Mac was off, fills correctly)
     bars = {}
     for s, df in panel.items():
-        if df.index[-1] == date and len(df) > 1:
-            bars[s] = {"open": df["open"].iloc[-1], "prev_close": df["close"].iloc[-2],
-                       "volume": df["volume"].iloc[-1]}
+        i = df.index.searchsorted(state["last_date"] or date, side="right")
+        if 0 < i < len(df):
+            bars[s] = {"date": df.index[i], "open": df["open"].iloc[i],
+                       "prev_close": df["close"].iloc[i - 1], "volume": df["volume"].iloc[i]}
     fills = broker.fill_pending(state, bars, date) if state["last_date"] else []
 
     # 2) mark to market at the close
